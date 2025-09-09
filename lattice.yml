@@ -1,0 +1,8 @@
+name: lattice
+channels:
+  - defaults
+dependencies:
+  - numpy
+  - pandas
+  - scipy
+  - matplotlib

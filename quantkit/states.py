@@ -100,22 +100,63 @@ def generate_random_non_separable_state(num_subsystems: int, dims: Union[int, Se
 # Definite State Generation
 # -------------------------------
 
-def generate_initial_state(L: int, string: bool = True) -> np.ndarray:
-    # Initialize state as the "vacuum" state
-    multi_partite_state = np.array([1])
-    next_state = (np.array([1.,0.]), np.array([0.,1.]))
+def generate_initial_state(L: int, kind: str = 'vacuum') -> np.ndarray:
+    """
+    Generate initial states for a Schwinger / Rydberg lattice model.
+    
+    Args:
+        L   : system size (number of sites)
+        kind: one of ['vacuum', 'single-q', 'single-q-bar', 
+                      'q-q-bar-pair', 'q-q-bar-scattering', 'q-q-scattering']
+    """
+    zero = np.array([1., 0.]) 
+    one  = np.array([0., 1.])  
+    next_state = (zero, one)
 
-    if string:    
-        for i in range(L):
-            multi_partite_state = add_subsystem(multi_partite_state, next_state[i%2])
+    # define middle position
+    mid = (L // 4)*2  
+
+    # background = staggered vacuum pattern
+    def background(i):
+        return next_state[i % 2]
+
+    # choose excitation sites for each scenario
+    excitation_sites = set()
+
+    if kind == 'vacuum':
+        pass  # no excitations, just vacuum staggering
+
+    elif kind == 'single-q':
+        excitation_sites.add(mid - 1)
+
+    elif kind == 'single-q-bar':
+        excitation_sites.add(mid)
+
+    elif kind == 'q-q-bar-pair':
+        excitation_sites.update([mid - 1, mid])   # pair next to each other
+
+    elif kind == 'q-q-bar-scattering':
+        # example: q at mid-2, qbar at mid+2
+        excitation_sites.update([mid - 2, mid + 2])
+
+    elif kind == 'q-q-scattering':
+        # two same-charge excitations at symmetric positions
+        excitation_sites.update([mid - 2, mid + 2])
+
     else:
-        for i in range(L):
-            if(i==4):#4 or i == 12
-                multi_partite_state = add_subsystem(multi_partite_state, next_state[1])
-            else:
-                multi_partite_state = add_subsystem(multi_partite_state, next_state[i%2])
+        raise ValueError(f"Unknown initial state kind: {kind}")
 
-    return multi_partite_state
+    # build full tensor product state
+    state = np.array([1.])  # start as scalar
+    for i in range(L):
+        if i in excitation_sites:
+            site = one
+        else:
+            site = background(i)
+        state = add_subsystem(state, site)
+
+    return state
+
 # -------------------------------
 # Density Matrix Construction
 # -------------------------------

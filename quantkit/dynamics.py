@@ -6,8 +6,7 @@ def psi_t(
     eigenvalues: np.ndarray,
     eigenvectors: np.ndarray,
     C: np.ndarray,
-    normalize: bool = False
-) -> np.ndarray:
+    normalize: bool = False ) -> np.ndarray:
     """
     Computes the time-evolved quantum state |psi(t)> given the spectral decomposition.
 
@@ -50,12 +49,10 @@ def psi_t(
     
     return psi
 
-
 def compute_expectations(
     psi_t_list: List[np.ndarray],
     n_ops: List[np.ndarray],
-    E_ops: List[np.ndarray]
-) -> Tuple[np.ndarray, np.ndarray]:
+    E_ops: List[np.ndarray] ) -> Tuple[np.ndarray, np.ndarray]:
     """
     Compute the time-dependent expectation values of n_i and E_i operators.
 

@@ -6,8 +6,7 @@ from typing import List, Tuple, Union
 def generate_blockade_basis_sparse(
     L: int,
     return_vectors: bool = False,
-    open_boundaries: bool = False
-) -> Union[List[int], Tuple[List[int], List[csr_matrix]]]:
+    open_boundaries: bool = False ) -> Union[List[int], Tuple[List[int], List[csr_matrix]]]:
     """
     Generate blockade-constrained basis states for a 1D chain of qubits,
     supporting open or periodic boundary conditions.

@@ -38,8 +38,7 @@ def two_site_operator(
     O_i: Optional[csr_matrix] = None,
     O_j: Optional[csr_matrix] = None,
     L: Optional[int] = None,
-    precomputed_operators: Optional[List[csr_matrix]] = None
-) -> csr_matrix:
+    precomputed_operators: Optional[List[csr_matrix]] = None ) -> csr_matrix:
     """
     Construct a two-site operator O_i O_j acting on a chain of length L.
 
@@ -100,20 +99,10 @@ def n_operator(L: int) -> csr_matrix:
         Sparse matrix representing the total number operator.
     """
     dim = 2**L
-
-    # Precompute identity matrices for tensor product construction
-    I_full = [identity(2**i, format="csr") for i in range(L)]
-    
-    # Initialize the n_operator as a sparse zero matrix of appropriate size
     n_operator = csr_matrix((dim, dim), dtype=np.float32)
     
     for i in range(L):
-        # Construct the left and right parts of the tensor product
-        left = I_full[i] if i > 0 else identity(1, format='csr')
-        right = I_full[L - i - 1] if (L - i - 1) > 0 else identity(1, format='csr')
-        
-        # Update the n_operator with the tensor product
-        n_operator += kron(kron(left, n_projector), right)
+        n_operator += one_site_operator(n_projector, i, L)
     
     return n_operator
 
@@ -131,16 +120,7 @@ def n_operators_by_site(L: int) -> list[csr_matrix]:
     list of csr_matrix
         Sparse matrices [n_0, n_1, ..., n_{L-1}], each acting on a single site.
     """
-    I_full = [identity(2**i, format="csr") for i in range(L)]
-    n_ops = []
-
-    for i in range(L):
-        left = I_full[i] if i > 0 else identity(1, format='csr')
-        right = I_full[L - i - 1] if (L - i - 1) > 0 else identity(1, format='csr')
-        n_i = kron(kron(left, n_projector), right)
-        n_ops.append(n_i)
-
-    return n_ops
+    return [one_site_operator(n_projector, i, L) for i in range(L)]
 
 def E_operators_by_site(L: int) -> list[csr_matrix]:
     """
@@ -156,16 +136,7 @@ def E_operators_by_site(L: int) -> list[csr_matrix]:
     list of csr_matrix
         Sparse matrices [E_0, E_1, ..., E_{L-1}], each representing the local electric field.
     """
-    I_full = [identity(2**i, format="csr") for i in range(L)]
-    E_ops = []
-
-    for i in range(L):
-        left = I_full[i] if i > 0 else identity(1, format='csr')
-        right = I_full[L - i - 1] if (L - i - 1) > 0 else identity(1, format='csr')
-        E_i = kron(kron(left, (-1)**(i) * 0.5 * sigma[2]), right)
-        E_ops.append(E_i)
-
-    return E_ops
+    return [one_site_operator((-1)**(i) * 0.5 * sigma[2], i, L) for i in range(L)]
 
 def E_operators_by_site_schwinger(L: int, alpha: float) -> list[csr_matrix]:
     """
@@ -203,42 +174,31 @@ def H_E_lat(J, alpha, L):
     Note: paper indices n,l,j run from 1..; in Python we map paper p -> python p-1.
     """
     dim = 2**L
-    I_full = identity(dim, format='csr')
-    H = csr_matrix((dim, dim), dtype=np.float64)
+    H = csr_matrix((dim, dim), dtype=np.float32)
 
-    # Precompute one-site sigma^z operators (python indices 0..L-1)
-    sz_sites = [one_site_operator(sigma[2], site, L) for site in range(L)]
+    # Precompute one-site sigma^z operators 
+    sz_sites = [one_site_operator(sigma[2], i, L) for i in range(L)]
 
-    # 1) (J/2) * sum_{n=1}^{L-2} sum_{l=n+1}^{L-1} (L - l) σ^z_n σ^z_l
-    # paper indices n=1..L-2, l=n+1..L-1 -> python n_py=0..L-3, l_py = n_py+1..L-2
+    # To avoid confusion i keep the paper notation
     pref1 = J / 2.0
-    for n_paper in range(1, L-1):               # n_paper = 1..L-2
-        n = n_paper - 1                         # python index
-        for l_paper in range(n_paper + 1, L):  # l_paper = n+1 .. L-1
-            l = l_paper - 1
-            weight = (L - l_paper)             # (L - l) with paper l
-            H += pref1 * weight * two_site_operator(n, l, precomputed_operators=sz_sites)
+    for n in range(1, L-1):                         
+        for l in range(n + 1, L):  
+            weight = (L - l)            
+            H += pref1 * weight * two_site_operator(n-1, l-1, precomputed_operators=sz_sites)
 
-    # sigma piece: - (J/4) * sum_{n=1}^{L-1} [ - (-1)^n sum_{l=1}^n σ^z_l ]
-    # compute as nested sum; map indices: l_paper=1..n -> python l=0..n-1
-    pref_sigma_piece = -(J / 4.0)
-    for n_paper in range(1, L):               # n_paper = 1..L-1
-        parity = (-1) ** n_paper
-        for l_paper in range(1, n_paper + 1): # l_paper = 1..n_paper
-            l = l_paper - 1
-            H += pref_sigma_piece * (1-parity) * sz_sites[l]
+    pref2 = -(J / 4.0)
+    for n in range(1, L):              
+        parity = (-1) ** n
+        for l in range(1, n + 1): 
+            H += pref2 * (1-parity) * sz_sites[l-1]
 
-    # 3) - J * alpha * sum_{j=1}^{L-1} (L - j) σ^z_j
-    # map j_paper -> python j = j_paper -1, j_paper runs 1..L-1
-    if alpha != 0.0:
+    if alpha != 0:
         pref3 = -J * alpha
-        for j_paper in range(1, L):            # j_paper = 1..L-1
-            j = j_paper - 1
-            weight = (L - j_paper)
-            H += pref3 * weight * sz_sites[j]
+        for j in range(1, L):
+            weight = (L - j)
+            H += pref3 * weight * sz_sites[j-1]
 
     return H
-
 
 def Compute_H_FSS_sparse(Omega: float, delta: float, L: int) -> csr_matrix:
     """
@@ -301,23 +261,18 @@ def Compute_H_schwinger_sparse(w: float, m: float, J: float, alpha: float, L: in
         Sparse Hamiltonian matrix of size 2^L x 2^L.
     """
     dim = 2**L
-    H = csr_matrix((dim, dim), dtype=np.float64)
-    I_full = [identity(2**i, format="csr") for i in range(L)]
+    H = csr_matrix((dim, dim), dtype=np.float32)
 
     # mass term
-    for i in range(L):
-        left  = I_full[i] if i > 0 else identity(1, format='csr')
-        right = I_full[L - i - 1] if (L - i - 1) > 0 else identity(1, format='csr')
-        H += (m/2) * ((-1)**(i+1)) * kron(kron(left, sigma[2]), right)
-
+    if m!= 0:
+        for i in range(L):
+            H += (m/2) * one_site_operator(((-1)**(i+1)) *sigma[2], i, L)  
+                
     # kinetic (your convention uses -w in front of σ⁺σ⁻ + h.c.; keep it)
     for i in range(L-1):
-        left  = I_full[i] if i > 0 else identity(1, format='csr')
-        right = I_full[L - i - 2] if (L - i - 2) > 0 else identity(1, format='csr')
-        H += -w * kron(kron(kron(left, sigma_plus),  sigma_minus), right)
-        H += -w * kron(kron(kron(left, sigma_minus), sigma_plus),  right)
-
-        H += H_E_lat(J, alpha, L)
-
+        H += -w * two_site_operator(i, i+1, sigma_plus, sigma_minus, L)
+        H += -w * two_site_operator(i, i+1, sigma_minus, sigma_plus, L)
+    
+    H += H_E_lat(J, alpha, L)
     return H
     

@@ -81,3 +81,36 @@ def VonNeumannEntropy(rho: np.ndarray) -> float:
     trace_rho_log2_rho = -np.trace(rho_log2_rho)
     
     return trace_rho_log2_rho
+
+def EntanglementEntropy(psi: np.ndarray, dA: int, dB: int, base: float = 2) -> float:
+    """Compute von Neumann entanglement entropy of a pure state.
+    
+    Parameters
+    ----------
+    psi : np.ndarray
+        State vector of shape (dA*dB,) or (dA,dB).
+    dA : int
+        Dimension of subsystem A.
+    dB : int
+        Dimension of subsystem B.
+    base : float
+        Logarithm base (2 for bits, np.e for nats).
+    """
+    psi = psi.flatten()
+    assert dA*dB == psi.shape[0], "Incorrect bipartition: dA*dB!=psi.shape[0]"
+
+    M = psi.reshape((dA, dB))       
+    s= np.linalg.svd(M, compute_uv=False)
+    lambdas = (s**2)                 # eigenvalues of rho_A
+    # cut small lambdas to reduce numerical issues
+    lambdas = lambdas[lambdas>1e-15]
+    # computing the Von Neumann entropy
+    S = -np.sum(lambdas * np.log(lambdas)) / np.log(base)
+
+    return S
+
+def LogschmidtEcho(psi: np.ndarray, psi_0: np.ndarray) -> float:
+    """Compute the Loschmidt echo |<psi|psi0>|^2."""
+    overlap = np.vdot(psi, psi_0)
+    echo = np.abs(overlap)**2
+    return float(echo.real) 

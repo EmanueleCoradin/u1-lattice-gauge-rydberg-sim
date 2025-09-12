@@ -1,5 +1,6 @@
 import numpy as np
 from typing import List, Tuple
+from .information import EntanglementEntropy, LogschmidtEcho
 
 def psi_t(
     t: float,
@@ -86,3 +87,59 @@ def compute_expectations(
             E_expect[ti, j] = np.vdot(psi, E_ops[j] @ psi).real
 
     return n_expect, E_expect
+
+def compute_entropy(psi_t_list: List[np.ndarray], projector: np.ndarray = None, dA: int=None, dB: int=None, base: float = 2) -> np.ndarray:
+    """
+    Compute entanglement entropy over a list of state vectors.
+    
+    Parameters
+    ----------
+    psi_t_list : List[np.ndarray]
+        List of state vectors (each of size dA*dB).
+    dA, dB : int, optional
+        Dimensions of subsystem A and B. If None, defaults to an equal bipartition.
+    base : float
+        Logarithm base (2 for bits, np.e for nats).
+    
+    Returns
+    -------
+    entropy : np.ndarray
+        Array of entropies for each state.
+    """
+    # Dimension of Hilbert space
+    Tdim = psi_t_list[0].shape[0]
+    
+    # Infer bipartition if not provided
+    if dA is None or dB is None:
+        # try equal bipartition
+        dA = int(np.sqrt(Tdim))
+        dB = Tdim // dA
+        assert dA * dB == Tdim, "Cannot infer a square bipartition for this state size."
+    
+    if projector is None:
+        entropy = np.array([EntanglementEntropy(psi, dA, dB, base) for psi in psi_t_list])
+    else:
+        entropy = np.array([EntanglementEntropy(projector@psi, dA, dB, base) for psi in psi_t_list])
+    return entropy
+
+def compute_echo(psi_t_list: List[np.ndarray], psi_0: np.ndarray) -> np.ndarray:
+    """
+    Compute the Loschmidt echo for a list of time-evolved states.
+
+    The Loschmidt echo is defined as
+        L(t) = |<psi(t) | psi(0)>|^2
+
+    Parameters
+    ----------
+    psi_t_list : List[np.ndarray]
+        List of state vectors at different times.
+    psi_0 : np.ndarray
+        Initial state vector.
+
+    Returns
+    -------
+    echo : np.ndarray
+        Array of Loschmidt echo values for each state in `psi_t_list`.
+    """
+    echo = np.array([LogschmidtEcho(psi, psi_0) for psi in psi_t_list])
+    return echo

@@ -1,6 +1,6 @@
 import numpy as np
 import matplotlib.pyplot as plt
-from typing import List, Tuple
+from typing import List, Tuple, Sequence
 from .dynamics import compute_expectations
 
 def Plot_Matrix(density_matrix: np.ndarray) -> None:
@@ -226,4 +226,40 @@ def compare_models(
         fig.colorbar(im2, ax=axes[1, col], label="⟨Êᵢ⟩")
 
     plt.tight_layout()
+    plt.show()
+
+def plot_echo_entropy(times: Sequence[float],
+                      echo: np.ndarray,
+                      entropy: np.ndarray) -> None:
+    """
+    Plot Loschmidt echo (or its logarithm) and entanglement entropy vs time.
+
+    Parameters
+    ----------
+    times : Sequence[float]
+        Time points corresponding to the states.
+    echo : np.ndarray
+        Array of Loschmidt echo values (|<psi(t)|psi(0)>|^2).
+    entropy : np.ndarray
+        Array of entanglement entropies.
+    base : float, optional
+        Logarithm base used when log_echo=True (default: natural log).
+    """
+    fig, ax1 = plt.subplots()
+
+    y = echo
+    ax1.set_ylabel("Loschmidt Echo L(t)")
+    ax1.plot(times, y, label="Loschmidt Echo", color="tab:blue")
+    ax1.set_xlabel("Time")
+
+    # Plot entropy on the right axis
+    ax2 = ax1.twinx()
+    ax2.plot(times, entropy, label="Entanglement Entropy (bits)", color="tab:orange")
+    ax2.set_ylabel("Entanglement Entropy")
+
+    # Legends
+    ax1.legend(loc="upper left")
+    ax2.legend(loc="upper right")
+
+    plt.title("Loschmidt Echo and Entanglement Entropy vs Time")
     plt.show()

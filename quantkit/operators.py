@@ -12,8 +12,8 @@ sigma = [
     csr_matrix([[1, 0], [0, -1]])  # sigma_z
 ]
 
-sigma_plus  = sigma[0] + 1j * sigma[1]
-sigma_minus = sigma[0] - 1j * sigma[1]
+sigma_plus  = (sigma[0] + 1j * sigma[1])/2
+sigma_minus = (sigma[0] - 1j * sigma[1])/2
 
 I2 = identity(2, format="csr")
 

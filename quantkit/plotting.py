@@ -1,6 +1,6 @@
 import numpy as np
 import matplotlib.pyplot as plt
-from typing import List, Tuple, Sequence
+from typing import List, Tuple, Sequence, Optional
 from .dynamics import compute_expectations
 
 def Plot_Matrix(density_matrix: np.ndarray) -> None:
@@ -164,11 +164,12 @@ def compare_models(
     psi_t_lists: List[List[np.ndarray]],
     n_ops_lists: List[List[np.ndarray]],
     E_ops_lists: List[List[np.ndarray]],
-    t_vals: np.ndarray,
-    figsize: Tuple[int,int]=(14,10)
+    rho_ops_lists: Optional[List[List[np.ndarray]]] = None,
+    t_vals: np.ndarray = None,
+    figsize: Tuple[int,int]=(14,12)
 ) -> None:
     """
-    Compare multiple models (e.g. Rydberg, Schwinger) by plotting their ⟨n_i⟩ and ⟨E_i⟩ dynamics
+    Compare multiple models with ⟨n_i⟩, ⟨E_i⟩, and optionally ⟨ρ_i⟩ dynamics 
     in a shared figure with subplots.
 
     Parameters
@@ -181,49 +182,54 @@ def compare_models(
         List of n_i operators for each model.
     E_ops_lists : list of list of operators
         List of E_i operators for each model.
+    rho_ops_lists : list of list of operators
+        List of rho_i operators for each model.
     t_vals : np.ndarray
         Common time values.
     figsize : tuple
         Size of the full comparison figure.
+    
     """
-    n_expect_list = []
-    E_expect_list = []
-
-    # Compute all expectations first
-    for psi_t_list, n_ops, E_ops in zip(psi_t_lists, n_ops_lists, E_ops_lists):
-        n_expect, E_expect = compute_expectations(psi_t_list, n_ops, E_ops)
-        n_expect_list.append(n_expect)
-        E_expect_list.append(E_expect)
-
-    # Create subplot grid: 2 rows (n, E) × number of models
     n_models = len(models)
-    fig, axes = plt.subplots(2, n_models, figsize=figsize, sharex=False, sharey=False)
+    has_rho = rho_ops_lists is not None
+    n_rows = 3 if has_rho else 2
+
+    fig, axes = plt.subplots(n_rows, n_models, figsize=figsize, sharex=False)
 
     if n_models == 1:
-        # Ensure axes is 2D even if only one model
-        axes = np.array([[axes[0]], [axes[1]]])
+        axes = np.array([[axes[i]] for i in range(n_rows)])
 
     for col, model in enumerate(models):
-        # n_i expectations
-        n_expect = n_expect_list[col]
-        extent_n = [-0.5, n_expect.shape[1]-0.5, t_vals[0], t_vals[-1]]
-        im1 = axes[0, col].imshow(n_expect, aspect='auto', origin='lower',
-                                  extent=extent_n, cmap='inferno',
-                                  vmin=0.0, vmax=1.0)
+        psi_list = psi_t_lists[col]
+        n_ops = n_ops_lists[col]
+        E_ops = E_ops_lists[col]
+        rho_ops = rho_ops_lists[col] if has_rho else None
+
+        n_expect, E_expect, rho_expect = compute_expectations(psi_list, n_ops, E_ops, rho_ops)
+
+        # n_i
+        im_n = axes[0, col].imshow(n_expect, aspect='auto', origin='lower', cmap='inferno',
+                                    extent=[-0.5, n_expect.shape[1]-0.5, t_vals[0], t_vals[-1]],
+                                    vmin=0, vmax=1)
         axes[0, col].set_title(f"{model}: ⟨n̂ᵢ⟩")
         axes[0, col].set_ylabel("Time")
-        fig.colorbar(im1, ax=axes[0, col], label="⟨n̂ᵢ⟩")
+        fig.colorbar(im_n, ax=axes[0, col])
 
-        # E_i expectations
-        E_expect = E_expect_list[col]
-        extent_E = [-0.5, E_expect.shape[1]-0.5, t_vals[0], t_vals[-1]]
-        im2 = axes[1, col].imshow(E_expect, aspect='auto', origin='lower',
-                                  extent=extent_E, cmap='bwr',
-                                  vmin=-0.5, vmax=0.5)
+        # E_i
+        im_E = axes[1, col].imshow(E_expect, aspect='auto', origin='lower', cmap='bwr',
+                                   extent=[-0.5, E_expect.shape[1]-0.5, t_vals[0], t_vals[-1]],
+                                   vmin=-0.5, vmax=0.5)
         axes[1, col].set_title(f"{model}: ⟨Êᵢ⟩")
-        axes[1, col].set_xlabel("Site / Link index")
         axes[1, col].set_ylabel("Time")
-        fig.colorbar(im2, ax=axes[1, col], label="⟨Êᵢ⟩")
+        fig.colorbar(im_E, ax=axes[1, col])
+
+        # ρ_i
+        if has_rho:
+            im_rho = axes[2, col].imshow(rho_expect, aspect='auto', origin='lower', cmap='viridis',
+                                         extent=[-0.5, rho_expect.shape[1]-0.5, t_vals[0], t_vals[-1]])
+            axes[2, col].set_title(f"{model}: ⟨ρ̂ᵢ⟩")
+            axes[2, col].set_ylabel("Time")
+            fig.colorbar(im_rho, ax=axes[2, col])
 
     plt.tight_layout()
     plt.show()

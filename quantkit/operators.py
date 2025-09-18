@@ -18,7 +18,7 @@ sigma_minus = (sigma[0] - 1j * sigma[1])/2
 I2 = identity(2, format="csr")
 
 n_projector = (sigma[2] + I2) * 0.5
-
+d_projector = -(sigma[2] - I2) * 0.5
 # -------------------------------
 # Templates
 # -------------------------------
@@ -122,6 +122,34 @@ def n_operators_by_site(L: int) -> list[csr_matrix]:
     """
     return [one_site_operator(n_projector, i, L) for i in range(L)]
 
+def matter_density_by_site(L: int, model: str = 'QLM') -> list[csr_matrix]:
+    """
+    Constructs the site-resolved matter density operators:
+    rho_j = -2 n_j + (1 + (-1)^j)/2
+    
+    Parameters
+    ----------
+    L : int
+        Number of qubits or sites.
+
+    Returns
+    -------
+    list of csr_matrix
+        Sparse matrices [n_0, n_1, ..., n_{L-1}], each acting on a single site.
+    """
+    match model:
+        case 'QLM':
+            
+            densities = [one_site_operator( 0.5 * ( (-(-1)**j) * sigma[2] + I2 ), j, L) 
+                        for j in range(L)]
+            return densities
+        case 'schwinger':
+            densities = [one_site_operator(-(-1)**i*sigma[2]/2., i, L) + identity(2**L, format="csr")/2. for i in range(L)]
+            return densities
+        case _:
+            raise ValueError("Unrecognized model. Choose between QLM and schwinger.")
+            
+    return n_operator
 def E_operators_by_site(L: int) -> list[csr_matrix]:
     """
     Constructs electric field operators E_i for each site i.

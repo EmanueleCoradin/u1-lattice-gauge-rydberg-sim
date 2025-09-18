@@ -100,20 +100,21 @@ def generate_random_non_separable_state(num_subsystems: int, dims: Union[int, Se
 # Definite State Generation
 # -------------------------------
 
-def generate_initial_state(L: int, kind: str = 'vacuum') -> np.ndarray:
+def generate_initial_state(L: int, model: str, kind: str = 'vacuum') -> np.ndarray:
     """
     Generate initial states for the Schwinger / Rydberg lattice model.
 
     Args:
         L   : system size (number of sites)
+        model: one of ['rydberg', 'schwinger']
         kind: one of ['vacuum', 'single-q', 'single-q-bar', 
                       'q-q-bar-pair', 'q-q-bar-scattering', 'q-q-scattering']
 
     Returns:
         state : ndarray of shape (2**L,), representing the product state
     """
-    zero = np.array([1., 0.])  # |0>, spin down (σz = -1)
-    one  = np.array([0., 1.])  # |1>, spin up   (σz = +1)
+    zero = np.array([1., 0.])  
+    one  = np.array([0., 1.])
 
     def kron(a, b):
         return np.kron(a, b)
@@ -130,34 +131,57 @@ def generate_initial_state(L: int, kind: str = 'vacuum') -> np.ndarray:
     # -------------------------------
     mid = (L // 4) * 2   # even index near center (for symmetric placement)
     excitation_sites = set()
+    
+    match model:
+        case 'schwinger':
+            match kind:
+                case 'vacuum':
+                    pass
 
-    if kind == 'vacuum':
-        pass
+                case 'single-q':
+                    excitation_sites.add(mid-1) 
 
-    elif kind == 'single-q':
-        # put quark on an odd site (Python even index)
-        excitation_sites.add(mid) if mid % 2 == 0 else excitation_sites.add(mid+1)
+                case 'single-q-bar':
+                    excitation_sites.add(mid) 
 
-    elif kind == 'single-q-bar':
-        # put antiquark on an even site (Python odd index)
-        excitation_sites.add(mid+1) if mid % 2 == 0 else excitation_sites.add(mid)
+                case 'q-q-bar-pair':
+                    # quark on even, antiquark on odd, next to each other
+                    excitation_sites.update([mid, mid+1])
 
-    elif kind == 'q-q-bar-pair':
-        # quark on even, antiquark on odd, next to each other
-        excitation_sites.update([mid, mid+1])
+                case 'q-q-bar-bare':
+                    excitation_sites.update([mid-3, mid+2])
 
-    elif kind == 'q-q-bar-scattering':
-        # quark at left, antiquark at right
-        left  = mid - 2 if (mid - 2) % 2 == 0 else mid - 3
-        right = mid + 2 if (mid + 2) % 2 == 1 else mid + 3
-        excitation_sites.update([left, right])
+                case 'q-q-bar-scattering':
+                    # quark at left, antiquark at right
+                    left  = mid - 4 
+                    right = mid + 2
+                    excitation_sites.update([left, left+1, right, right+1])
 
-    elif kind == 'q-q-scattering':
-        # two quarks on even sites, symmetric
-        excitation_sites.update([mid - 2, mid + 2])
+                case _:
+                    raise ValueError(f"Unknown initial state kind: {kind}")
 
-    else:
-        raise ValueError(f"Unknown initial state kind: {kind}")
+        case 'rydberg':
+            match kind:
+                case 'vacuum':
+                    pass
+
+                case 'q-q-bar-pair':
+                    # put quark on an odd site (Python even index)
+                    excitation_sites.add(mid) 
+
+                case 'q-q-bar-scattering':
+                    # quark at left, antiquark at right
+                    left  = mid - 4 
+                    right = mid + 2
+                    excitation_sites.add(left)
+                    excitation_sites.add(right)
+                
+                case 'q-q-bar-bare':
+                    excitation_sites.update([mid-2, mid-1, mid, mid+1, mid+2]) 
+                case _:
+                    raise ValueError(f"Unknown initial state kind: {kind}")
+        case _:
+            raise ValueError(f"Unknown model: {model}")
 
     # -------------------------------
     # Build tensor product state

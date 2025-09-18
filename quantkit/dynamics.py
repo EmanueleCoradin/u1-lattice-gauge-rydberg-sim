@@ -1,5 +1,5 @@
 import numpy as np
-from typing import List, Tuple
+from typing import List, Tuple, Optional
 from .information import EntanglementEntropy, LogschmidtEcho
 
 def psi_t(
@@ -53,9 +53,11 @@ def psi_t(
 def compute_expectations(
     psi_t_list: List[np.ndarray],
     n_ops: List[np.ndarray],
-    E_ops: List[np.ndarray] ) -> Tuple[np.ndarray, np.ndarray]:
+    E_ops: List[np.ndarray],
+    rho_ops: Optional[List[np.ndarray]] = None
+) -> Tuple[np.ndarray, np.ndarray, Optional[np.ndarray]]:
     """
-    Compute the time-dependent expectation values of n_i and E_i operators.
+    Compute the time-dependent expectation values of n_i and E_i, and optionally rho_i.
 
     Parameters
     ----------
@@ -65,13 +67,17 @@ def compute_expectations(
         Local occupation operators for each site.
     E_ops : list of (sparse) matrices
         Local electric field operators for each site/link.
+    rho_ops: list of (sparse) matrices
+        Local density of particles and antiparticles
 
     Returns
     -------
-    n_expect : np.ndarray
+    n_expect   : np.ndarray
         Array of shape (len(psi_t_list), len(n_ops)) with ⟨n_i⟩ values.
-    E_expect : np.ndarray
+    E_expect   : np.ndarray
         Array of shape (len(psi_t_list), len(E_ops)) with ⟨E_i⟩ values.
+    rho_expect : np.ndarray
+        Array of shape (len(psi_t_list), len(r_ops)) with (rho_i⟩ values.
     """
     T = len(psi_t_list)
     L_n = len(n_ops)
@@ -79,14 +85,31 @@ def compute_expectations(
 
     n_expect = np.zeros((T, L_n))
     E_expect = np.zeros((T, L_E))
+    
+    rho_expect = None
+    if rho_ops is not None:
+        L_rho = len(rho_ops)
+        rho_expect = np.zeros((T, L_rho))
 
     for ti, psi in enumerate(psi_t_list):
         for i in range(L_n):
             n_expect[ti, i] = np.vdot(psi, n_ops[i] @ psi).real
         for j in range(L_E):
             E_expect[ti, j] = np.vdot(psi, E_ops[j] @ psi).real
+        '''
+        if rho_ops is not None:
+            for k in range(L_rho):
+                rho_expect[ti, k] = np.vdot(psi, rho_ops[k] @ psi).real
+        '''
+        if rho_ops is not None:
+            for r in range(L_n):
+                E_left = E_expect[ti, r-1] if r > 0  else E_expect[ti, -1]
+                E_right = E_expect[ti, r] if r < L_E else E_expect[ti, 0]
+                rho_expect[ti, r] = np.abs(E_right - E_left)
 
-    return n_expect, E_expect
+
+
+    return n_expect, E_expect, rho_expect
 
 def compute_entropy(psi_t_list: List[np.ndarray], projector: np.ndarray = None, dA: int=None, dB: int=None, base: float = 2) -> np.ndarray:
     """

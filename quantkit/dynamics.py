@@ -111,6 +111,38 @@ def compute_expectations(
 
     return n_expect, E_expect, rho_expect
 
+def compute_model_expectations(
+    models: List[str],
+    psi_t_lists: List[List[np.ndarray]],
+    n_ops_lists: List[List[np.ndarray]],
+    E_ops_lists: List[List[np.ndarray]],
+    rho_ops_lists: Optional[List[List[np.ndarray]]] = None,
+) -> dict:
+    """
+    Compute expectation values for multiple models.
+
+    Returns
+    -------
+    results : dict
+        {
+          "ModelName": {
+             "n": np.ndarray (T × L_n),
+             "E": np.ndarray (T × L_E),
+             "rho": np.ndarray (T × L_rho or None)
+          },
+          ...
+        }
+    """
+    results = {}
+    for i, model in enumerate(models):
+        rho_ops = rho_ops_lists[i] if rho_ops_lists is not None else None
+        n_exp, E_exp, rho_exp = compute_expectations(
+            psi_t_lists[i], n_ops_lists[i], E_ops_lists[i], rho_ops
+        )
+        results[model] = {"n": n_exp, "E": E_exp, "rho": rho_exp}
+    return results
+
+
 def compute_entropy(psi_t_list: List[np.ndarray], projector: np.ndarray = None, dA: int=None, dB: int=None, base: float = 2) -> np.ndarray:
     """
     Compute entanglement entropy over a list of state vectors.

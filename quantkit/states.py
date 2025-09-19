@@ -149,13 +149,14 @@ def generate_initial_state(L: int, model: str, kind: str = 'vacuum') -> np.ndarr
                     excitation_sites.update([mid, mid+1])
 
                 case 'q-q-bar-bare':
-                    excitation_sites.update([mid-3, mid+2])
+                        left = mid-2
+                        right = mid+1
+                        excitation_sites.update([left, right])
 
                 case 'q-q-bar-scattering':
-                    # quark at left, antiquark at right
                     left  = mid - 4 
                     right = mid + 2
-                    excitation_sites.update([left, left+1, right, right+1])
+                    excitation_sites.update([left, right])
 
                 case _:
                     raise ValueError(f"Unknown initial state kind: {kind}")

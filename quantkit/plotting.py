@@ -159,74 +159,72 @@ def plot_models(
                           title_n=f"{model}: ⟨n̂ᵢ⟩",
                           title_E=f"{model}: ⟨Êᵢ⟩")
 
-def compare_models(
-    models: List[str],
-    psi_t_lists: List[List[np.ndarray]],
-    n_ops_lists: List[List[np.ndarray]],
-    E_ops_lists: List[List[np.ndarray]],
-    rho_ops_lists: Optional[List[List[np.ndarray]]] = None,
-    t_vals: np.ndarray = None,
-    figsize: Tuple[int,int]=(14,12)
-) -> None:
+def plot_model_expectations(
+    results: dict,
+    t_vals: np.ndarray,
+    figsize: tuple[int, int] = (14, 12)
+):
     """
-    Compare multiple models with ⟨n_i⟩, ⟨E_i⟩, and optionally ⟨ρ_i⟩ dynamics 
-    in a shared figure with subplots.
+    Plot expectation values ⟨n_i⟩, ⟨E_i⟩, and optionally ⟨ρ_i⟩
+    for one or more models as space-time heatmaps.
 
     Parameters
     ----------
-    models : list of str
-        Names of the models (e.g., ["Rydberg", "Schwinger"]).
-    psi_t_lists : list of list of np.ndarray
-        Each entry is a list of |psi(t)> states for that model.
-    n_ops_lists : list of list of operators
-        List of n_i operators for each model.
-    E_ops_lists : list of list of operators
-        List of E_i operators for each model.
-    rho_ops_lists : list of list of operators
-        List of rho_i operators for each model.
+    results : dict
+        Dictionary of model results, typically produced by
+        `compute_model_expectations`. Expected format:
+            {
+                "ModelName": {
+                    "n": np.ndarray (T × L_n),
+                    "E": np.ndarray (T × L_E),
+                    "rho": np.ndarray (T × L_rho) or None
+                },
+                ...
+            }
+        where T = number of time steps, L_* = number of sites/links.
     t_vals : np.ndarray
-        Common time values.
-    figsize : tuple
-        Size of the full comparison figure.
-    
+        Array of time values of length T, aligned with the evolution in `results`.
+    figsize : tuple of int, optional
+        Size of the matplotlib figure (default: (14, 12)).
+
     """
-    n_models = len(models)
-    has_rho = rho_ops_lists is not None
+    n_models = len(results)
+    has_rho = any(res["rho"] is not None for res in results.values())
     n_rows = 3 if has_rho else 2
 
     fig, axes = plt.subplots(n_rows, n_models, figsize=figsize, sharex=False)
-
     if n_models == 1:
         axes = np.array([[axes[i]] for i in range(n_rows)])
 
-    for col, model in enumerate(models):
-        psi_list = psi_t_lists[col]
-        n_ops = n_ops_lists[col]
-        E_ops = E_ops_lists[col]
-        rho_ops = rho_ops_lists[col] if has_rho else None
-
-        n_expect, E_expect, rho_expect = compute_expectations(psi_list, n_ops, E_ops, rho_ops)
+    for col, (model, res) in enumerate(results.items()):
+        n_exp, E_exp, rho_exp = res["n"], res["E"], res["rho"]
 
         # n_i
-        im_n = axes[0, col].imshow(n_expect, aspect='auto', origin='lower', cmap='inferno',
-                                    extent=[-0.5, n_expect.shape[1]-0.5, t_vals[0], t_vals[-1]],
-                                    vmin=0, vmax=1)
+        im_n = axes[0, col].imshow(
+            n_exp, aspect="auto", origin="lower", cmap="inferno",
+            extent=[-0.5, n_exp.shape[1]-0.5, t_vals[0], t_vals[-1]],
+            vmin=0, vmax=1
+        )
         axes[0, col].set_title(f"{model}: ⟨n̂ᵢ⟩")
         axes[0, col].set_ylabel("Time")
         fig.colorbar(im_n, ax=axes[0, col])
 
         # E_i
-        im_E = axes[1, col].imshow(E_expect, aspect='auto', origin='lower', cmap='bwr',
-                                   extent=[-0.5, E_expect.shape[1]-0.5, t_vals[0], t_vals[-1]],
-                                   vmin=-0.5, vmax=0.5)
+        im_E = axes[1, col].imshow(
+            E_exp, aspect="auto", origin="lower", cmap="bwr",
+            extent=[-0.5, E_exp.shape[1]-0.5, t_vals[0], t_vals[-1]],
+            vmin=-0.5, vmax=0.5
+        )
         axes[1, col].set_title(f"{model}: ⟨Êᵢ⟩")
         axes[1, col].set_ylabel("Time")
         fig.colorbar(im_E, ax=axes[1, col])
 
         # ρ_i
-        if has_rho:
-            im_rho = axes[2, col].imshow(rho_expect, aspect='auto', origin='lower', cmap='viridis',
-                                         extent=[-0.5, rho_expect.shape[1]-0.5, t_vals[0], t_vals[-1]])
+        if has_rho and rho_exp is not None:
+            im_rho = axes[2, col].imshow(
+                rho_exp, aspect="auto", origin="lower", cmap="viridis",
+                extent=[-0.5, rho_exp.shape[1]-0.5, t_vals[0], t_vals[-1]]
+            )
             axes[2, col].set_title(f"{model}: ⟨ρ̂ᵢ⟩")
             axes[2, col].set_ylabel("Time")
             fig.colorbar(im_rho, ax=axes[2, col])
@@ -234,38 +232,89 @@ def compare_models(
     plt.tight_layout()
     plt.show()
 
-def plot_echo_entropy(times: Sequence[float],
-                      echo: np.ndarray,
-                      entropy: np.ndarray) -> None:
+
+def plot_echo_entropy(
+    times: Sequence[float],
+    echo: np.ndarray,
+    entropy: np.ndarray,
+    rho_expect: Optional[np.ndarray] = None
+) -> None:
     """
-    Plot Loschmidt echo (or its logarithm) and entanglement entropy vs time.
+    Plot Loschmidt echo, entanglement entropy, and optionally the
+    mean matter density ⟨ρ̄(t)⟩ vs time.
 
     Parameters
     ----------
     times : Sequence[float]
         Time points corresponding to the states.
     echo : np.ndarray
-        Array of Loschmidt echo values (|<psi(t)|psi(0)>|^2).
+        Array of Loschmidt echo values (|<psi(t)|psi(0)>|^2), in [0,1].
     entropy : np.ndarray
         Array of entanglement entropies.
-    base : float, optional
-        Logarithm base used when log_echo=True (default: natural log).
+    rho_expect : np.ndarray, optional
+        Array of shape (T, L) with per-site ⟨ρ_j⟩ values.
+        If provided, the mean density across sites is plotted (also ∈ [0,1]).
     """
     fig, ax1 = plt.subplots()
 
-    y = echo
-    ax1.set_ylabel("Loschmidt Echo L(t)")
-    ax1.plot(times, y, label="Loschmidt Echo", color="tab:blue")
+    # Loschmidt echo
+    ax1.plot(times, echo, label="Loschmidt Echo", color="tab:blue")
     ax1.set_xlabel("Time")
+    ax1.set_ylabel("Loschmidt Echo / Mean ⟨ρ⟩", color="tab:blue")
+    ax1.tick_params(axis="y", labelcolor="tab:blue")
 
-    # Plot entropy on the right axis
+    # Mean density (if available)
+    if rho_expect is not None:
+        mean_rho = rho_expect.mean(axis=1)
+        ax1.plot(times, mean_rho, label="Mean ⟨ρ⟩", color="tab:green", linestyle="--")
+
+    # Entropy on secondary axis
     ax2 = ax1.twinx()
-    ax2.plot(times, entropy, label="Entanglement Entropy (bits)", color="tab:orange")
-    ax2.set_ylabel("Entanglement Entropy")
+    ax2.plot(times, entropy, label="Entanglement Entropy", color="tab:orange")
+    ax2.set_ylabel("Entanglement Entropy", color="tab:orange")
+    ax2.tick_params(axis="y", labelcolor="tab:orange")
 
-    # Legends
-    ax1.legend(loc="upper left")
-    ax2.legend(loc="upper right")
+    # Title
+    plt.title("Loschmidt Echo, Entropy, and Mean ⟨ρ⟩ vs Time")
 
-    plt.title("Loschmidt Echo and Entanglement Entropy vs Time")
+    # Combine legends
+    lines, labels = [], []
+    for ax in [ax1, ax2]:
+        lns, lbs = ax.get_legend_handles_labels()
+        lines.extend(lns)
+        labels.extend(lbs)
+    fig.legend(lines, labels, loc="upper right")
+
+    plt.tight_layout()
+    plt.show()
+
+def plot_electric_field(
+    times: Sequence[float],
+    E_expect: np.ndarray,
+    site_indices: Sequence[int] = (0, 1)
+) -> None:
+    """
+    Plot the time evolution of the electric field ⟨E_j⟩ for two selected sites.
+
+    Parameters
+    ----------
+    times : Sequence[float]
+        Array of time points.
+    E_expect : np.ndarray
+        Electric field expectation values, shape (timesteps, number_of_sites).
+    site_indices : tuple of int, default=(0,1)
+        Indices of the two sites to plot.
+    """
+    fig, ax = plt.subplots(figsize=(8,5))
+
+    for j in site_indices:
+        ax.plot(times, E_expect[:, j], label=f"Site {j}")
+
+    ax.set_xlabel("Time")
+    ax.set_ylabel("⟨E_j⟩")
+    ax.set_title("Electric Field Evolution at Selected Sites")
+    ax.grid(True)
+    ax.legend()
+
+    plt.tight_layout()
     plt.show()

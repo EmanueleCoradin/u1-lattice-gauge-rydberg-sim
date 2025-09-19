@@ -228,7 +228,7 @@ def H_E_lat(J, alpha, L):
 
     return H
 
-def Compute_H_FSS_sparse(Omega: float, delta: float, L: int) -> csr_matrix:
+def Compute_H_FSS_sparse(Omega: float, delta: float, L: int, Delta:float = 0) -> csr_matrix:
     """
     Constructs the full sparse Hamiltonian for a 1D Rydberg chain of length L.
 
@@ -243,7 +243,8 @@ def Compute_H_FSS_sparse(Omega: float, delta: float, L: int) -> csr_matrix:
         Detuning.
     L : int
         Number of qubits/sites.
-
+    Delta: float
+        Tunable Stark shift.
     Returns
     -------
     csr_matrix
@@ -251,17 +252,14 @@ def Compute_H_FSS_sparse(Omega: float, delta: float, L: int) -> csr_matrix:
     """
     # Precompute identity matrices
     dim = 2**L
-    I_full = [identity(2**i, format="csr") for i in range(L)]
 
     # Initialize the Hamiltonian
     H = csr_matrix((dim, dim), dtype=np.float32)
 
     for i in range(L):
-        left = I_full[i] if i > 0 else identity(1, format='csr')
-        right = I_full[L - i - 1] if (L - i - 1) > 0 else identity(1, format='csr')
-        H += Omega * kron(kron(left, sigma[0]), right)
-        H += kron(kron(left, 2.0 * delta * n_projector), right)
-
+        H += one_site_operator(Omega *sigma[0], i, L)
+        H += one_site_operator(2.0 * delta * n_projector, i, L)
+        H += one_site_operator(-Delta/2. * (-1)**i*sigma[2], i, L)
     return H
 
 def Compute_H_schwinger_sparse(w: float, m: float, J: float, alpha: float, L: int) -> csr_matrix:

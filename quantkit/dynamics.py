@@ -198,3 +198,61 @@ def compute_echo(psi_t_list: List[np.ndarray], psi_0: np.ndarray) -> np.ndarray:
     """
     echo = np.array([LogschmidtEcho(psi, psi_0) for psi in psi_t_list])
     return echo
+
+def compute_fft(
+    times: np.ndarray,
+    data: np.ndarray,
+    site_index: int | None = None
+) -> Tuple[np.ndarray, np.ndarray]:
+    """
+    Compute the Fourier transform of an observable (per-site or averaged).
+
+    Parameters
+    ----------
+    times : np.ndarray
+        Array of time points, shape (T,).
+    data : np.ndarray
+        Observable values, shape (T,) if averaged, or (T, L) if site-resolved.
+    site_index : int or None
+        If None: data is assumed already site-averaged (1D).
+        If int: analyze that specific site from (T, L) data.
+
+    Returns
+    -------
+    freqs : np.ndarray
+        Array of positive frequency values.
+    spectrum : np.ndarray
+        Power spectrum |FFT|^2 corresponding to freqs.
+    """
+    dt = times[1] - times[0]   # assume uniform spacing
+    T = len(times)
+
+    # Select signal
+    if data.ndim == 1:
+        signal = data
+    elif data.ndim == 2:
+        if site_index is None:
+            # average over sites
+            signal = data.mean(axis=1)
+        else:
+            signal = data[:, site_index]
+    else:
+        raise ValueError("data must be 1D (averaged) or 2D (time × sites)")
+
+    signal = signal - np.mean(signal)
+    fft_vals = np.fft.fft(signal)
+    fft_freqs = np.fft.fftfreq(T, d=dt)
+
+    # Keep positive frequencies 
+    # Observables are hermitian operators -> we expect FFT with even symmetry
+    pos_mask = fft_freqs >= 0
+    freqs = fft_freqs[pos_mask]
+    spectrum = np.abs(fft_vals[pos_mask])**2 / T
+
+    # One-sided normalization: double except DC and Nyquist (if present)
+    if T % 2 == 0:
+        spectrum[1:-1] *= 2
+    else:
+        spectrum[1:] *= 2
+
+    return freqs, spectrum

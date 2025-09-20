@@ -318,3 +318,40 @@ def plot_electric_field(
 
     plt.tight_layout()
     plt.show()
+
+def plot_fft(
+    freqs: np.ndarray,
+    spectrum: np.ndarray,
+    site_index: int = None,
+    observable_name: str = "Observable",
+    plot_DC: bool = False
+) -> None:
+    """
+    Plot the power spectrum of a given observable.
+
+    Parameters
+    ----------
+    freqs : np.ndarray
+        Frequency array from compute_fft.
+    spectrum : np.ndarray
+        Power spectrum |FFT|^2.
+    site_index : int
+        Site index (for labeling). 
+    observable_name : str
+        Name of the observable (for title/labels).
+    plot_DC : bool
+        if True the DC component of the power spectrum is also plotted
+    """
+    plt.figure(figsize=(8,5))
+    plt.plot(freqs[1:], spectrum[1:], color="tab:blue")
+    plt.xlabel("Frequency")
+    plt.ylabel("Power Spectrum |FFT|²")
+    if site_index is None:
+        plt.title(f"{observable_name} Spectrum")
+    else:
+        plt.title(f"{observable_name} Spectrum at Site {site_index}")
+    plt.xscale('log')
+    plt.yscale('log')
+    plt.grid(True)
+    plt.tight_layout()
+    plt.show()

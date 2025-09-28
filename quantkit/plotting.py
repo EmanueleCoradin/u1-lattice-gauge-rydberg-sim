@@ -232,6 +232,73 @@ def plot_model_expectations(
     plt.tight_layout()
     plt.show()
 
+def plot_rydberg_schwinger(
+    rydberg_results: dict,
+    schwinger_results: dict,
+    t_vals: np.ndarray,
+    figsize: tuple[int, int] = (18, 5)
+):
+    """
+    Plot Rydberg ⟨n_i⟩, Rydberg ⟨E_i⟩, and Schwinger ⟨E_i⟩
+    in a single row with 3 columns, using Matplotlib mathtext.
+
+    Parameters
+    ----------
+    rydberg_results : dict
+        Dictionary containing Rydberg model results with keys:
+            {"n": np.ndarray (T × L_n), "E": np.ndarray (T × L_E)}
+    schwinger_results : dict
+        Dictionary containing Schwinger model results with key:
+            {"E": np.ndarray (T × L_E)}
+    t_vals : np.ndarray
+        Array of time values of length T.
+    figsize : tuple of int, optional
+        Size of the matplotlib figure (default: (18, 5)).
+    """
+
+
+    fig, axes = plt.subplots(1, 3, figsize=figsize, sharex=False)
+
+    # Font sizes
+    title_fs = 18
+    label_fs = 16
+    tick_fs = 14
+
+    # --- Rydberg n_i ---
+    n_exp = rydberg_results["n"]
+    im_n = axes[0].imshow(
+        n_exp, aspect="auto", origin="lower", cmap="inferno",
+        extent=[-0.5, n_exp.shape[1]-0.5, t_vals[0], t_vals[-1]],
+        vmin=0, vmax=1
+    )
+    axes[0].set_title(r"Rydberg: $\langle n_i \rangle$", fontsize=title_fs)
+    axes[0].set_ylabel(r"$t \Omega$", fontsize=label_fs)
+    axes[0].tick_params(axis='both', labelsize=tick_fs)
+
+    # --- Rydberg E_i ---
+    E_exp_ryd = rydberg_results["E"]
+    im_E_ryd = axes[1].imshow(
+        E_exp_ryd, aspect="auto", origin="lower", cmap="bwr",
+        extent=[-0.5, E_exp_ryd.shape[1]-0.5, t_vals[0], t_vals[-1]],
+        vmin=-0.5, vmax=0.5
+    )
+    axes[1].set_title(r"QLM: $\langle E_i \rangle$", fontsize=title_fs)
+    axes[1].set_ylabel(r"$t \omega$", fontsize=label_fs)
+    axes[1].tick_params(axis='both', labelsize=tick_fs)
+
+    # --- Schwinger E_i ---
+    E_exp_sch = schwinger_results["E"]
+    im_E_sch = axes[2].imshow(
+        E_exp_sch, aspect="auto", origin="lower", cmap="bwr",
+        extent=[-0.5, E_exp_sch.shape[1]-0.5, t_vals[0], t_vals[-1]],
+        vmin=-0.5, vmax=0.5
+    )
+    axes[2].set_title(r"Schwinger: $\langle E_i \rangle$", fontsize=title_fs)
+    axes[2].set_ylabel(r"$t \omega$", fontsize=label_fs)
+    axes[2].tick_params(axis='both', labelsize=tick_fs)
+
+    plt.tight_layout()
+    plt.show()
 
 def plot_echo_entropy(
     times: Sequence[float],

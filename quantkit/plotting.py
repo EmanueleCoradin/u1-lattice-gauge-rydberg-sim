@@ -2,6 +2,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from typing import List, Tuple, Sequence, Optional
 from .dynamics import compute_expectations
+from matplotlib.ticker import MultipleLocator, FixedLocator
 
 def Plot_Matrix(density_matrix: np.ndarray) -> None:
     """
@@ -260,9 +261,9 @@ def plot_rydberg_schwinger(
     fig, axes = plt.subplots(1, 3, figsize=figsize, sharex=False)
 
     # Font sizes
-    title_fs = 18
-    label_fs = 16
-    tick_fs = 14
+    title_fs = 36
+    label_fs = 32
+    tick_fs  = 28
 
     # --- Rydberg n_i ---
     n_exp = rydberg_results["n"]
@@ -297,6 +298,10 @@ def plot_rydberg_schwinger(
     axes[2].set_ylabel(r"$t \omega$", fontsize=label_fs)
     axes[2].tick_params(axis='both', labelsize=tick_fs)
 
+    # --- enforce integer ticks on x-axis ---
+    for ax in axes:
+        ax.xaxis.set_major_locator(MultipleLocator(2))
+
     plt.tight_layout()
     plt.show()
 
@@ -322,27 +327,33 @@ def plot_echo_entropy(
         Array of shape (T, L) with per-site ⟨ρ_j⟩ values.
         If provided, the mean density across sites is plotted (also ∈ [0,1]).
     """
-    fig, ax1 = plt.subplots()
+    fig, ax1 = plt.subplots(figsize=(8, 6), constrained_layout=True)
+    title_fs  = 26
+    label_fs  = 24
+    tick_fs   = 22
+    legend_fs = 18
 
     # Loschmidt echo
-    ax1.plot(times, echo, label="Loschmidt Echo", color="tab:blue")
-    ax1.set_xlabel("Time")
-    ax1.set_ylabel("Loschmidt Echo / Mean ⟨ρ⟩", color="tab:blue")
-    ax1.tick_params(axis="y", labelcolor="tab:blue")
+    ax1.plot(times, echo, label="Loschmidt Echo", color="tab:blue", linewidth=3)
+    ax1.set_xlabel(r"$t \omega$", fontsize=label_fs)
+    ax1.set_ylabel("Loschmidt Echo / Mean ⟨ρ⟩", color="tab:blue", fontsize=label_fs)
+    ax1.tick_params(axis="y", labelcolor="tab:blue", labelsize=tick_fs)
+    ax1.tick_params(axis="x", labelsize=tick_fs)
 
     # Mean density (if available)
     if rho_expect is not None:
         mean_rho = rho_expect.mean(axis=1)
-        ax1.plot(times, mean_rho, label="Mean ⟨ρ⟩", color="tab:green", linestyle="--")
+        ax1.plot(times, mean_rho, label="Mean ⟨ρ⟩", color="tab:green", linestyle="--", linewidth=3)
 
     # Entropy on secondary axis
     ax2 = ax1.twinx()
-    ax2.plot(times, entropy, label="Entanglement Entropy", color="tab:orange")
-    ax2.set_ylabel("Entanglement Entropy", color="tab:orange")
-    ax2.tick_params(axis="y", labelcolor="tab:orange")
+    ax2.plot(times, entropy, label="Entanglement Entropy", color="tab:orange", linewidth=3)
+    ax2.set_ylabel("Entanglement Entropy", color="tab:orange", fontsize=label_fs)
+    ax2.tick_params(axis="y", labelcolor="tab:orange", labelsize=tick_fs)
+    ax2.tick_params(axis="x", labelsize=tick_fs)
 
     # Title
-    plt.title("Loschmidt Echo, Entropy, and Mean ⟨ρ⟩ vs Time")
+    # plt.title("Loschmidt Echo, Entropy, and Mean ⟨ρ⟩ vs Time", fontsize=title_fs)
 
     # Combine legends
     lines, labels = [], []
@@ -350,9 +361,13 @@ def plot_echo_entropy(
         lns, lbs = ax.get_legend_handles_labels()
         lines.extend(lns)
         labels.extend(lbs)
-    fig.legend(lines, labels, loc="upper right")
-
-    plt.tight_layout()
+    fig.legend(
+        lines, labels,
+        loc='lower center',      
+        bbox_to_anchor=(0.5, -0.08), 
+        ncol=len(labels),       
+        fontsize=legend_fs
+    )   
     plt.show()
 
 def plot_electric_field(
@@ -370,22 +385,28 @@ def plot_electric_field(
     E_expect : np.ndarray
         Electric field expectation values, shape (timesteps, number_of_sites).
     site_indices : tuple of int, default=(0,1)
-        Indices of the two sites to plot.
+        Indices of the two sites to plot. figsize=(8,5)
     """
-    fig, ax = plt.subplots(figsize=(8,5))
+    fig, ax = plt.subplots(figsize=(8, 6), constrained_layout=True)
+    title_fs  = 26
+    label_fs  = 24
+    tick_fs   = 22
+    legend_fs = 18
 
     for j in site_indices:
-        ax.plot(times, E_expect[:, j], label=f"Site {j}")
+        ax.plot(times, E_expect[:, j], label=f"Site {j}",linewidth=3)
 
-    ax.set_xlabel("Time")
-    ax.set_ylabel("⟨E_j⟩")
-    ax.set_title("Electric Field Evolution at Selected Sites")
+    ax.set_xlabel(r"$t \omega$", fontsize=label_fs)
+    ax.set_ylabel("Electric field ⟨E_j⟩", fontsize=label_fs)
+    #ax.set_title("Electric Field Evolution at Selected Sites", fontsize=title_fs)
     ax.grid(True)
-    ax.legend()
-
+    ax.tick_params(axis="both", labelsize=tick_fs)
+    ax.legend(loc="lower right", fontsize=legend_fs)
+    ax.set_ylim(-0.55, 0.55)
+    ax.yaxis.set_major_locator(FixedLocator([-0.5, -0.25, 0.0, 0.25, 0.5]))
     plt.tight_layout()
     plt.show()
-
+    
 def plot_fft(
     freqs: np.ndarray,
     spectrum: np.ndarray,
@@ -410,7 +431,7 @@ def plot_fft(
         if True the DC component of the power spectrum is also plotted
     """
     plt.figure(figsize=(8,5))
-    plt.plot(freqs[1:], spectrum[1:], color="tab:blue")
+    plt.plot(freqs[1:], spectrum[1:], color="tab:blue", linewidth=2)
     plt.xlabel("Frequency")
     plt.ylabel("Power Spectrum |FFT|²")
     if site_index is None:

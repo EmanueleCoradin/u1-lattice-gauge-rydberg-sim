@@ -41,14 +41,14 @@ u1-lattice-gauge-rydberg-sim/
 Clone the repository and install dependencies:
 
 ```bash
-git clone <repo-url>
+git clone https://github.com/EmanueleCoradin/u1-lattice-gauge-rydberg-sim
 cd u1-lattice-gauge-rydberg-sim
 pip install -r requirements.txt
 ```
 or use conda
 
 ```bash
-git clone <repo-url>
+git clone https://github.com/EmanueleCoradin/u1-lattice-gauge-rydberg-sim
 cd u1-lattice-gauge-rydberg-sim
 conda env create -f lattice.yml
 conda activate lattice

@@ -96,11 +96,6 @@ def compute_expectations(
             n_expect[ti, i] = np.vdot(psi, n_ops[i] @ psi).real
         for j in range(L_E):
             E_expect[ti, j] = np.vdot(psi, E_ops[j] @ psi).real
-        '''
-        if rho_ops is not None:
-            for k in range(L_rho):
-                rho_expect[ti, k] = np.vdot(psi, rho_ops[k] @ psi).real
-        '''
         if rho_ops is not None:
             for r in range(L_n):
                 E_left = E_expect[ti, r-1] if r > 0  else E_expect[ti, -1]

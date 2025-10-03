@@ -345,14 +345,3 @@ def compute_reduced_density_matrix_for_mixture(
     if print_rho:
         print(rho)
     return rho
-
-
-    """Generate initial product state (string or custom pattern)."""
-    state = np.array([1])
-    basis = (np.array([1.,0.]), np.array([0.,1.]))
-    for i in range(L):
-        if not string and i == 4:
-            state = add_subsystem(state, basis[1])
-        else:
-            state = add_subsystem(state, basis[i % 2])
-    return state

@@ -193,9 +193,24 @@ def plot_model_expectations(
     has_rho = any(res["rho"] is not None for res in results.values())
     n_rows = 3 if has_rho else 2
 
-    fig, axes = plt.subplots(n_rows, n_models, figsize=figsize, sharex=False)
+    # Set figure size based on number of models and rows
+    subplot_width = 6
+    subplot_height = 5
+    figsize = (subplot_width * n_models, subplot_height * n_rows)
+
+    _, axes = plt.subplots(n_rows, n_models, figsize=figsize, sharex=False)
+
     if n_models == 1:
         axes = np.array([[axes[i]] for i in range(n_rows)])
+    elif n_rows == 1:
+        axes = np.array([axes])
+    else:
+        axes = np.array(axes)
+
+    # Font sizes (match style)
+    title_fs = 36
+    label_fs = 32
+    tick_fs  = 28
 
     for col, (model, res) in enumerate(results.items()):
         n_exp, E_exp, rho_exp = res["n"], res["E"], res["rho"]
@@ -206,9 +221,9 @@ def plot_model_expectations(
             extent=[-0.5, n_exp.shape[1]-0.5, t_vals[0], t_vals[-1]],
             vmin=0, vmax=1
         )
-        axes[0, col].set_title(f"{model}: ⟨n̂ᵢ⟩")
-        axes[0, col].set_ylabel("Time")
-        fig.colorbar(im_n, ax=axes[0, col])
+        axes[0, col].set_title(rf"{model}: $\langle n_i \rangle$", fontsize=title_fs)
+        axes[0, col].set_ylabel(r"$t \Omega$", fontsize=label_fs)
+        axes[0, col].tick_params(axis='both', labelsize=tick_fs)
 
         # E_i
         im_E = axes[1, col].imshow(
@@ -216,19 +231,27 @@ def plot_model_expectations(
             extent=[-0.5, E_exp.shape[1]-0.5, t_vals[0], t_vals[-1]],
             vmin=-0.5, vmax=0.5
         )
-        axes[1, col].set_title(f"{model}: ⟨Êᵢ⟩")
-        axes[1, col].set_ylabel("Time")
-        fig.colorbar(im_E, ax=axes[1, col])
+        axes[1, col].set_title(rf"{model}: $\langle E_i \rangle$", fontsize=title_fs)
+        axes[1, col].set_ylabel(r"$t \omega$", fontsize=label_fs)
+        axes[1, col].tick_params(axis='both', labelsize=tick_fs)
 
-        # ρ_i
+        # rho_i (if present)
         if has_rho and rho_exp is not None:
             im_rho = axes[2, col].imshow(
                 rho_exp, aspect="auto", origin="lower", cmap="viridis",
                 extent=[-0.5, rho_exp.shape[1]-0.5, t_vals[0], t_vals[-1]]
             )
-            axes[2, col].set_title(f"{model}: ⟨ρ̂ᵢ⟩")
-            axes[2, col].set_ylabel("Time")
-            fig.colorbar(im_rho, ax=axes[2, col])
+            if model == 'Rydberg':
+                axes[2, col].set_title(rf"QLM: $\langle \rho_i \rangle$", fontsize=title_fs)
+            else:
+                axes[2, col].set_title(rf"{model}: $\langle \rho_i \rangle$", fontsize=title_fs)
+            axes[2, col].set_ylabel(r"$t \omega$", fontsize=label_fs)
+            axes[2, col].tick_params(axis='both', labelsize=tick_fs)
+
+    # Enforce integer x-ticks
+    for ax_row in axes:
+        for ax in ax_row:
+            ax.xaxis.set_major_locator(MultipleLocator(2))
 
     plt.tight_layout()
     plt.show()
@@ -258,7 +281,7 @@ def plot_rydberg_schwinger(
     """
 
 
-    fig, axes = plt.subplots(1, 3, figsize=figsize, sharex=False)
+    _, axes = plt.subplots(1, 3, figsize=figsize, sharex=False)
 
     # Font sizes
     title_fs = 36
@@ -328,7 +351,6 @@ def plot_echo_entropy(
         If provided, the mean density across sites is plotted (also ∈ [0,1]).
     """
     fig, ax1 = plt.subplots(figsize=(8, 6), constrained_layout=True)
-    title_fs  = 26
     label_fs  = 24
     tick_fs   = 22
     legend_fs = 18
@@ -351,9 +373,6 @@ def plot_echo_entropy(
     ax2.set_ylabel("Entanglement Entropy", color="tab:orange", fontsize=label_fs)
     ax2.tick_params(axis="y", labelcolor="tab:orange", labelsize=tick_fs)
     ax2.tick_params(axis="x", labelsize=tick_fs)
-
-    # Title
-    # plt.title("Loschmidt Echo, Entropy, and Mean ⟨ρ⟩ vs Time", fontsize=title_fs)
 
     # Combine legends
     lines, labels = [], []
@@ -387,8 +406,7 @@ def plot_electric_field(
     site_indices : tuple of int, default=(0,1)
         Indices of the two sites to plot. figsize=(8,5)
     """
-    fig, ax = plt.subplots(figsize=(8, 6), constrained_layout=True)
-    title_fs  = 26
+    _, ax = plt.subplots(figsize=(8, 6), constrained_layout=True)
     label_fs  = 24
     tick_fs   = 22
     legend_fs = 18
@@ -398,7 +416,6 @@ def plot_electric_field(
 
     ax.set_xlabel(r"$t \omega$", fontsize=label_fs)
     ax.set_ylabel("Electric field ⟨E_j⟩", fontsize=label_fs)
-    #ax.set_title("Electric Field Evolution at Selected Sites", fontsize=title_fs)
     ax.grid(True)
     ax.tick_params(axis="both", labelsize=tick_fs)
     ax.legend(loc="lower right", fontsize=legend_fs)
